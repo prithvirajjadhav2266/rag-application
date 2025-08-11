@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}RAG Chat - RHP RAG Application{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Chat Interface -->
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments me-2"></i>RAG Chat Interface
+                    </h5>
+                    <small class="text-muted">Ask questions about your uploaded RHP documents</small>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Chat Messages -->
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message assistant">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-robot me-2 mt-1"></i>
+                                <div>
+                                    <strong>AI Assistant</strong>
+                                    <p class="mb-0 mt-1">
+                                        Hello! I'm here to help you analyze your RHP documents. 
+                                        You can ask me about:
+                                    </p>
+                                    <ul class="mt-2 mb-0">
+                                        <li>Company financials and performance</li>
+                                        <li>Business model and strategy</li>
+                                        <li>Risk factors and opportunities</li>
+                                        <li>IPO details and market information</li>
+                                        <li>Industry comparisons and trends</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Input -->
+                    <div class="p-3 border-top">
+                        <form id="chatForm" class="d-flex gap-2">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="messageInput" 
+                                   placeholder="Ask a question about your RHP documents..."
+                                   autocomplete="off">
+                            <button type="submit" 
+                                    class="btn btn-primary" 
+                                    id="sendBtn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+                        
+                        <!-- Quick Suggestions -->
+                        <div class="mt-2">
+                            <small class="text-muted">Quick questions:</small>
+                            <div class="mt-1">
+                                <button class="btn btn-sm btn-outline-secondary me-1 mb-1 suggestion-btn">
+                                    What is the company's revenue trend?
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary me-1 mb-1 suggestion-btn">
+                                    What are the main risk factors?
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary me-1 mb-1 suggestion-btn">
+                                    What is the IPO size and price range?
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary me-1 mb-1 suggestion-btn">
+                                    Who are the key management team members?
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Document Selector -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-database me-2"></i>Available Documents
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="documentsList">
+                        <div class="text-center py-3">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p class="mb-0 mt-2">Loading documents...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Query Statistics -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Session Stats
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="h4 text-primary mb-1" id="queriesCount">0</div>
+                            <small class="text-muted">Queries</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 text-success mb-1" id="tokensUsed">0</div>
+                            <small class="text-muted">Tokens</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Context Sources -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-book me-2"></i>Context Sources
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="contextSources">
+                        <div class="text-center py-3 text-muted">
+                            <i class="fas fa-search fa-2x mb-2"></i>
+                            <p class="mb-0">Ask a question to see relevant sources</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let queriesCount = 0;
+    let totalTokensUsed = 0;
+
+    // Initialize chat
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDocuments();
+        
+        // Handle form submission
+        document.getElementById('chatForm').addEventListener('submit', handleChatSubmit);
+        
+        // Handle suggestion buttons
+        document.querySelectorAll('.suggestion-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('messageInput').value = this.textContent;
+                handleChatSubmit(new Event('submit'));
+            });
+        });
+        
+        // Auto-focus on input
+        document.getElementById('messageInput').focus();
+    });
+
+    async function loadDocuments() {
+        try {
+            const response = await fetch('/api/documents');
+            const data = await response.json();
+            
+            const documentsList = document.getElementById('documentsList');
+            
+            if (data.documents && data.documents.length > 0) {
+                let html = '<div class="list-group list-group-flush">';
+                
+                data.documents.forEach(doc => {
+                    html += `
+                        <div class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${doc.filename || 'Unknown'}</h6>
+                                <small class="text-muted">${doc.chunk_count || 0} chunks</small>
+                            </div>
+                            <p class="mb-1">${doc.company_name || 'Unknown Company'}</p>
+                            <small class="text-muted">${doc.document_type || 'Unknown Type'}</small>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                documentsList.innerHTML = html;
+            } else {
+                documentsList.innerHTML = `
+                    <div class="text-center py-3">
+                        <i class="fas fa-folder-open fa-2x text-muted mb-2"></i>
+                        <p class="mb-2">No documents uploaded yet</p>
+                        <a href="{{ url_for('main.upload_document') }}" class="btn btn-sm btn-primary">
+                            Upload Document
+                        </a>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading documents:', error);
+            document.getElementById('documentsList').innerHTML = `
+                <div class="text-center py-3 text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p class="mb-0">Error loading documents</p>
+                </div>
+            `;
+        }
+    }
+
+    async function handleChatSubmit(e) {
+        e.preventDefault();
+        
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const message = messageInput.value.trim();
+        
+        if (!message) return;
+        
+        // Add user message to chat
+        addMessage(message, 'user');
+        
+        // Clear input and disable send button
+        messageInput.value = '';
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        // Add loading message
+        const loadingId = addMessage('Thinking...', 'assistant', true);
+        
+        try {
+            const response = await fetch('/api/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: message,
+                    k: 5
+                })
+            });
+            
+            const result = await response.json();
+            
+            // Remove loading message
+            document.getElementById(loadingId).remove();
+            
+            if (result.error) {
+                addMessage(`Sorry, I encountered an error: ${result.error}`, 'assistant');
+            } else {
+                // Add AI response
+                addMessage(result.answer, 'assistant');
+                
+                // Update statistics
+                queriesCount++;
+                totalTokensUsed += result.tokens_used || 0;
+                updateStats();
+                
+                // Update context sources
+                updateContextSources(result.sources || []);
+            }
+            
+        } catch (error) {
+            console.error('Query error:', error);
+            document.getElementById(loadingId).remove();
+            addMessage('Sorry, I encountered an error while processing your question. Please try again.', 'assistant');
+        } finally {
+            // Re-enable send button
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            messageInput.focus();
+        }
+    }
+
+    function addMessage(text, sender, isLoading = false) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageId = 'msg-' + Date.now();
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        messageDiv.id = messageId;
+        
+        if (sender === 'user') {
+            messageDiv.innerHTML = `
+                <div class="d-flex align-items-start justify-content-end">
+                    <div class="text-end">
+                        <strong>You</strong>
+                        <p class="mb-0 mt-1">${text}</p>
+                    </div>
+                    <i class="fas fa-user ms-2 mt-1"></i>
+                </div>
+            `;
+        } else {
+            messageDiv.innerHTML = `
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-robot me-2 mt-1"></i>
+                    <div>
+                        <strong>AI Assistant</strong>
+                        <div class="mt-1">
+                            ${isLoading ? 
+                                '<div class="loading-spinner"></div>' + text :
+                                formatMessage(text)
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        return messageId;
+    }
+
+    function formatMessage(text) {
+        // Simple formatting for AI responses
+        return text
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>')
+            .replace(/^\s*(\d+\.)/gm, '<br><strong>$1</strong>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^(.*)$/, '<p>$1</p>');
+    }
+
+    function updateStats() {
+        document.getElementById('queriesCount').textContent = queriesCount;
+        document.getElementById('tokensUsed').textContent = totalTokensUsed.toLocaleString();
+    }
+
+    function updateContextSources(sources) {
+        const contextSources = document.getElementById('contextSources');
+        
+        if (sources.length === 0) {
+            contextSources.innerHTML = `
+                <div class="text-center py-3 text-muted">
+                    <p class="mb-0">No relevant sources found</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        sources.forEach((source, index) => {
+            const relevanceColor = source.relevance_score > 0.8 ? 'success' : 
+                                  source.relevance_score > 0.6 ? 'warning' : 'secondary';
+            
+            html += `
+                <div class="mb-3 p-2 border rounded">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <small class="fw-bold">${source.filename}</small>
+                        <span class="badge bg-${relevanceColor}">${(source.relevance_score * 100).toFixed(0)}%</span>
+                    </div>
+                    <small class="text-muted d-block">${source.company_name}</small>
+                    <small class="text-muted">${source.chunk_preview}</small>
+                </div>
+            `;
+        });
+        
+        contextSources.innerHTML = html;
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + Enter to send message
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+        }
+        
+        // Escape to clear input
+        if (e.key === 'Escape') {
+            document.getElementById('messageInput').value = '';
+        }
+    });
+</script>
+{% endblock %}

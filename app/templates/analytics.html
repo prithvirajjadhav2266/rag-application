@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - RHP RAG Application{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-chart-line me-2"></i>Financial Analytics
+        </h2>
+        <div>
+            <select class="form-select" id="documentSelect" onchange="loadFinancialAnalysis()">
+                <option value="">Select a document...</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Analysis Content -->
+    <div id="analyticsContent">
+        <div class="text-center py-5">
+            <i class="fas fa-chart-bar fa-4x text-muted mb-3"></i>
+            <h4>Select a Document</h4>
+            <p class="text-muted">Choose a document from the dropdown to view financial analytics</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDocumentOptions();
+    });
+
+    async function loadDocumentOptions() {
+        try {
+            const response = await fetch('/api/documents');
+            const data = await response.json();
+            
+            const select = document.getElementById('documentSelect');
+            
+            if (data.documents && data.documents.length > 0) {
+                data.documents.forEach(doc => {
+                    const option = document.createElement('option');
+                    option.value = doc.file_id;
+                    option.textContent = `${doc.company_name || 'Unknown'} - ${doc.filename}`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">No documents available</option>';
+            }
+        } catch (error) {
+            console.error('Error loading documents:', error);
+        }
+    }
+
+    async function loadFinancialAnalysis() {
+        const fileId = document.getElementById('documentSelect').value;
+        const content = document.getElementById('analyticsContent');
+        
+        if (!fileId) {
+            content.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-chart-bar fa-4x text-muted mb-3"></i>
+                    <h4>Select a Document</h4>
+                    <p class="text-muted">Choose a document from the dropdown to view financial analytics</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Show loading
+        content.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                <h4 class="mt-3">Loading Financial Analysis...</h4>
+            </div>
+        `;
+
+        try {
+            const response = await fetch(`/api/financial-analysis/${fileId}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                content.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-triangle fa-4x text-warning mb-3"></i>
+                        <h4>Analysis Error</h4>
+                        <p class="text-muted">${data.error}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            displayFinancialAnalysis(data);
+            
+        } catch (error) {
+            console.error('Error loading financial analysis:', error);
+            content.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-triangle fa-4x text-danger mb-3"></i>
+                    <h4>Error Loading Analysis</h4>
+                    <p class="text-muted">Please try again later</p>
+                </div>
+            `;
+        }
+    }
+
+    function displayFinancialAnalysis(data) {
+        const content = document.getElementById('analyticsContent');
+        let html = '';
+
+        // Financial Summary
+        if (data.financial_summary) {
+            html += `
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-pie me-2"></i>Financial Summary
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h3 text-primary">${data.financial_summary.total_metrics || 0}</div>
+                                            <small class="text-muted">Total Metrics</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <div class="h3 text-success">${data.financial_summary.years_covered?.length || 0}</div>
+                                            <small class="text-muted">Years Covered</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Growth Rates:</h6>
+                                        ${Object.entries(data.financial_summary.growth_rates || {}).map(([metric, rate]) => 
+                                            `<span class="badge bg-${rate > 0 ? 'success' : 'danger'} me-1">${metric}: ${rate}%</span>`
+                                        ).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // AI Analysis
+        if (data.ai_analysis) {
+            html += `
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-robot me-2"></i>AI Financial Analysis
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="analysis-content">
+                                    ${formatAnalysisText(data.ai_analysis)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Plots
+        if (data.plots && data.plots.length > 0) {
+            html += '<div class="row mb-4">';
+            data.plots.forEach(plot => {
+                html += `
+                    <div class="col-lg-6 mb-3">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">${plot.title}</h6>
+                            </div>
+                            <div class="card-body">
+                                <iframe src="/api/plots/${plot.filename}" 
+                                        width="100%" 
+                                        height="400" 
+                                        frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        // Financial Data Tables
+        if (data.financial_data) {
+            html += `
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-table me-2"></i>Financial Data
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                ${renderFinancialTables(data.financial_data)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        content.innerHTML = html;
+    }
+
+    function formatAnalysisText(text) {
+        return text
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>')
+            .replace(/^\s*(\d+\.)/gm, '<br><strong>$1</strong>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^(.*)$/, '<p>$1</p>');
+    }
+
+    function renderFinancialTables(financialData) {
+        let html = '';
+        
+        if (financialData.income_statement && financialData.income_statement.length > 0) {
+            html += `
+                <h6>Income Statement Data</h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Value</th>
+                                <th>Year</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            financialData.income_statement.forEach(item => {
+                html += `
+                    <tr>
+                        <td>${item.metric?.replace(/_/g, ' ').toUpperCase()}</td>
+                        <td>${item.value?.toLocaleString()}</td>
+                        <td>${item.year || 'N/A'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table></div>';
+        }
+        
+        return html || '<p class="text-muted">No financial data available</p>';
+    }
+</script>
+{% endblock %}
