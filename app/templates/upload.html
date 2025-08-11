@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Document - RHP RAG Application{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-upload me-2"></i>Upload RHP Document
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-0">
+                        Upload your Red Herring Prospectus (RHP) Word document for AI-powered analysis. 
+                        Supported formats: .docx, .doc
+                    </p>
+                </div>
+            </div>
+
+            <!-- Upload Form -->
+            <div class="card">
+                <div class="card-body">
+                    <form id="uploadForm" method="POST" enctype="multipart/form-data" action="{{ url_for('main.upload_document') }}">
+                        <!-- Drag and Drop Area -->
+                        <div class="upload-area" id="uploadArea">
+                            <i class="fas fa-cloud-upload-alt fa-4x text-primary mb-3"></i>
+                            <h5>Drag and drop your RHP document here</h5>
+                            <p class="text-muted mb-3">or click to browse files</p>
+                            <input type="file" name="file" id="fileInput" accept=".docx,.doc" style="display: none;">
+                            <button type="button" class="btn btn-primary btn-lg" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-folder-open me-2"></i>Browse Files
+                            </button>
+                        </div>
+
+                        <!-- File Info -->
+                        <div id="fileInfo" style="display: none;" class="mt-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Selected File:</h6>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-file-word fa-2x text-primary me-3"></i>
+                                        <div>
+                                            <div id="fileName" class="fw-bold"></div>
+                                            <small id="fileSize" class="text-muted"></small>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger ms-auto" onclick="clearFile()">
+                                            <i class="fas fa-times"></i> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Upload Options -->
+                        <div class="mt-4">
+                            <h6>Processing Options:</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="extractFinancials" checked>
+                                <label class="form-check-label" for="extractFinancials">
+                                    Extract financial data and generate visualizations
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="generateSummary" checked>
+                                <label class="form-check-label" for="generateSummary">
+                                    Generate AI-powered document summary
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="addToVectorDB" checked>
+                                <label class="form-check-label" for="addToVectorDB">
+                                    Add to vector database for RAG queries
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Upload Button -->
+                        <div class="mt-4 text-center">
+                            <button type="submit" class="btn btn-success btn-lg" id="uploadBtn" disabled>
+                                <i class="fas fa-upload me-2"></i>Upload and Process
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Processing Status -->
+            <div id="processingStatus" class="card mt-4" style="display: none;">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog fa-spin me-2"></i>Processing Document
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%" id="progressBar">
+                        </div>
+                    </div>
+                    <div id="processingSteps">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-circle-notch fa-spin me-2 text-primary"></i>
+                            <span>Uploading file...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Success -->
+            <div id="uploadSuccess" class="card mt-4" style="display: none;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Upload Successful
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="successContent"></div>
+                    <div class="mt-3">
+                        <a href="{{ url_for('main.chat_interface') }}" class="btn btn-primary me-2">
+                            <i class="fas fa-comments me-1"></i>Start Analysis
+                        </a>
+                        <a href="{{ url_for('main.list_documents') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-list me-1"></i>View All Documents
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Requirements -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>File Requirements
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success">Supported Formats:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>.docx (Word 2007+)</li>
+                                <li><i class="fas fa-check text-success me-2"></i>.doc (Word 97-2003)</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info">Features Extracted:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-info me-2"></i>Text content</li>
+                                <li><i class="fas fa-check text-info me-2"></i>Tables and financial data</li>
+                                <li><i class="fas fa-check text-info me-2"></i>Document metadata</li>
+                                <li><i class="fas fa-check text-info me-2"></i>Company information</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning mt-3" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Note:</strong> Maximum file size is 100MB. Processing time depends on document size and complexity.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadForm = document.getElementById('uploadForm');
+    const processingStatus = document.getElementById('processingStatus');
+    const uploadSuccess = document.getElementById('uploadSuccess');
+
+    // Drag and drop functionality
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFileSelect(files[0]);
+        }
+    });
+
+    uploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFileSelect(e.target.files[0]);
+        }
+    });
+
+    function handleFileSelect(file) {
+        // Validate file type
+        const allowedTypes = ['.doc', '.docx'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedTypes.includes(fileExtension)) {
+            showAlert('Please select a valid Word document (.doc or .docx)', 'danger');
+            return;
+        }
+
+        // Validate file size (100MB limit)
+        if (file.size > 100 * 1024 * 1024) {
+            showAlert('File size must be less than 100MB', 'danger');
+            return;
+        }
+
+        // Display file info
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        fileInfo.style.display = 'block';
+        uploadBtn.disabled = false;
+
+        // Store file for form submission
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+    }
+
+    function clearFile() {
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        uploadBtn.disabled = true;
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Form submission with API
+    uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (!fileInput.files[0]) {
+            showAlert('Please select a file first', 'warning');
+            return;
+        }
+
+        // Show processing status
+        processingStatus.style.display = 'block';
+        uploadBtn.disabled = true;
+
+        // Create FormData
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+            // Update progress
+            updateProgress(20, 'Uploading file...');
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            updateProgress(60, 'Processing document...');
+
+            const result = await response.json();
+
+            if (result.success) {
+                updateProgress(100, 'Processing complete!');
+                
+                setTimeout(() => {
+                    processingStatus.style.display = 'none';
+                    showSuccessResult(result);
+                }, 1000);
+            } else {
+                throw new Error(result.error || 'Upload failed');
+            }
+
+        } catch (error) {
+            console.error('Upload error:', error);
+            processingStatus.style.display = 'none';
+            uploadBtn.disabled = false;
+            showAlert(`Upload failed: ${error.message}`, 'danger');
+        }
+    });
+
+    function updateProgress(percentage, step) {
+        const progressBar = document.getElementById('progressBar');
+        const processingSteps = document.getElementById('processingSteps');
+        
+        progressBar.style.width = percentage + '%';
+        
+        const steps = [
+            'Uploading file...',
+            'Extracting text content...',
+            'Processing tables and metadata...',
+            'Adding to vector database...',
+            'Generating AI summary...',
+            'Processing complete!'
+        ];
+
+        let currentStep;
+        if (percentage <= 20) currentStep = steps[0];
+        else if (percentage <= 40) currentStep = steps[1];
+        else if (percentage <= 60) currentStep = steps[2];
+        else if (percentage <= 80) currentStep = steps[3];
+        else if (percentage <= 95) currentStep = steps[4];
+        else currentStep = steps[5];
+
+        processingSteps.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-${percentage === 100 ? 'check-circle text-success' : 'circle-notch fa-spin text-primary'} me-2"></i>
+                <span>${currentStep}</span>
+            </div>
+        `;
+    }
+
+    function showSuccessResult(result) {
+        const successContent = document.getElementById('successContent');
+        
+        successContent.innerHTML = `
+            <h6>Document processed successfully!</h6>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <strong>File:</strong> ${result.filename}<br>
+                    <strong>Company:</strong> ${result.document_summary?.company_name || 'Unknown'}<br>
+                    <strong>Type:</strong> ${result.document_summary?.document_type || 'Unknown'}
+                </div>
+                <div class="col-md-6">
+                    <strong>Word Count:</strong> ${result.document_summary?.word_count || 0}<br>
+                    <strong>Tables:</strong> ${result.document_summary?.table_count || 0}<br>
+                    <strong>Financial Data:</strong> ${result.document_summary?.has_financial_data ? 'Yes' : 'No'}
+                </div>
+            </div>
+            ${result.ai_summary ? `
+                <div class="mt-3">
+                    <h6>AI Summary:</h6>
+                    <div class="alert alert-info">
+                        ${result.ai_summary.substring(0, 300)}...
+                    </div>
+                </div>
+            ` : ''}
+        `;
+        
+        uploadSuccess.style.display = 'block';
+        
+        // Reset form
+        clearFile();
+        uploadBtn.disabled = false;
+    }
+</script>
+{% endblock %}

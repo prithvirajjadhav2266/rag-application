@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - RHP RAG Application{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Hero Section -->
+    <div class="row mb-5">
+        <div class="col-lg-12">
+            <div class="card bg-gradient text-white" style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));">
+                <div class="card-body text-center py-5">
+                    <h1 class="display-4 fw-bold mb-3">
+                        <i class="fas fa-chart-line me-3"></i>
+                        RHP RAG Application
+                    </h1>
+                    <p class="lead mb-4">
+                        Intelligent analysis of Red Herring Prospectus documents using AI and machine learning
+                    </p>
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <p class="mb-4">
+                                Upload IPO documents, extract financial data, get AI-powered insights, 
+                                and visualize company performance with our comprehensive RAG system.
+                            </p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('main.upload_document') }}" class="btn btn-light btn-lg me-3">
+                        <i class="fas fa-upload me-2"></i>Upload Document
+                    </a>
+                    <a href="{{ url_for('main.chat_interface') }}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-comments me-2"></i>Start Analysis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card stats-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-alt fa-3x mb-3 opacity-75"></i>
+                    <div class="stats-number" id="documents-count">0</div>
+                    <div>Documents Processed</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-database fa-3x mb-3 opacity-75"></i>
+                    <div class="stats-number" id="chunks-count">0</div>
+                    <div>Data Chunks</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-bar fa-3x mb-3 opacity-75"></i>
+                    <div class="stats-number" id="queries-count">0</div>
+                    <div>Queries Processed</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-robot fa-3x mb-3 opacity-75"></i>
+                    <div class="stats-number" id="ai-status">
+                        <i class="fas fa-circle text-success"></i>
+                    </div>
+                    <div>AI Status</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('main.upload_document') }}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center p-4">
+                                <i class="fas fa-upload fa-2x mb-2"></i>
+                                <span>Upload RHP Document</span>
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('main.chat_interface') }}" class="btn btn-outline-success w-100 h-100 d-flex flex-column align-items-center justify-content-center p-4">
+                                <i class="fas fa-comments fa-2x mb-2"></i>
+                                <span>RAG Chat</span>
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('main.analytics_dashboard') }}" class="btn btn-outline-warning w-100 h-100 d-flex flex-column align-items-center justify-content-center p-4">
+                                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                <span>Financial Analytics</span>
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('main.list_documents') }}" class="btn btn-outline-info w-100 h-100 d-flex flex-column align-items-center justify-content-center p-4">
+                                <i class="fas fa-folder fa-2x mb-2"></i>
+                                <span>Browse Documents</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Documents -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>Recent Documents
+                    </h5>
+                </div>
+                <div class="card-body" id="recent-documents">
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No documents uploaded yet</p>
+                        <a href="{{ url_for('main.upload_document') }}" class="btn btn-primary">
+                            Upload Your First Document
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>System Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Vector Database</span>
+                            <span class="badge bg-success" id="db-status">Online</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>AI Model</span>
+                            <span class="badge bg-success" id="llm-status">Ready</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Document Processor</span>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Analytics Engine</span>
+                            <span class="badge bg-success">Running</span>
+                        </div>
+                    </div>
+                    <hr>
+                    <small class="text-muted">
+                        <i class="fas fa-server me-1"></i>
+                        Last updated: <span id="last-updated">Just now</span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Overview -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star me-2"></i>Key Features
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-file-upload fa-3x text-primary mb-3"></i>
+                                <h6>Document Processing</h6>
+                                <p class="text-muted small">
+                                    Upload and process Word documents with tables, images, and complex formatting
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-brain fa-3x text-success mb-3"></i>
+                                <h6>AI-Powered Analysis</h6>
+                                <p class="text-muted small">
+                                    Get intelligent insights using advanced LLM models and RAG technology
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-chart-line fa-3x text-warning mb-3"></i>
+                                <h6>Financial Visualization</h6>
+                                <p class="text-muted small">
+                                    Automatically generate plots and charts from financial data in documents
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Load dashboard data
+    function loadDashboardData() {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.database_stats) {
+                    document.getElementById('documents-count').textContent = data.database_stats.total_documents || 0;
+                    document.getElementById('chunks-count').textContent = data.database_stats.total_chunks || 0;
+                }
+                
+                // Update AI status
+                const aiStatus = document.getElementById('ai-status');
+                const llmStatus = document.getElementById('llm-status');
+                
+                if (data.llm_available) {
+                    aiStatus.innerHTML = '<i class="fas fa-circle text-success"></i>';
+                    llmStatus.textContent = 'Ready';
+                    llmStatus.className = 'badge bg-success';
+                } else {
+                    aiStatus.innerHTML = '<i class="fas fa-circle text-warning"></i>';
+                    llmStatus.textContent = 'Offline';
+                    llmStatus.className = 'badge bg-warning';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading dashboard data:', error);
+            });
+    }
+
+    // Load recent documents
+    function loadRecentDocuments() {
+        fetch('/api/documents')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('recent-documents');
+                
+                if (data.documents && data.documents.length > 0) {
+                    let html = '';
+                    data.documents.slice(0, 5).forEach(doc => {
+                        html += `
+                            <div class="document-item p-3 mb-2 rounded">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">${doc.filename || 'Unknown'}</h6>
+                                        <small class="text-muted">
+                                            ${doc.company_name || 'Unknown Company'} • 
+                                            ${doc.chunk_count || 0} chunks
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="text-muted d-block">
+                                            ${new Date(doc.processing_timestamp).toLocaleDateString()}
+                                        </small>
+                                        <a href="/document/${doc.file_id}" class="btn btn-sm btn-outline-primary">
+                                            View
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-4">
+                            <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No documents uploaded yet</p>
+                            <a href="{{ url_for('main.upload_document') }}" class="btn btn-primary">
+                                Upload Your First Document
+                            </a>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading recent documents:', error);
+            });
+    }
+
+    // Update timestamp
+    function updateTimestamp() {
+        document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+    }
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDashboardData();
+        loadRecentDocuments();
+        updateTimestamp();
+        
+        // Refresh data every 30 seconds
+        setInterval(() => {
+            loadDashboardData();
+            updateTimestamp();
+        }, 30000);
+    });
+</script>
+{% endblock %}

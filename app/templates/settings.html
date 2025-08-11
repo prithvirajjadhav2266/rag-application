@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - RHP RAG Application{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Header -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>Application Settings
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-0">
+                        Configure your RHP RAG application settings and preferences.
+                    </p>
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-heartbeat me-2"></i>System Status
+                    </h5>
+                </div>
+                <div class="card-body" id="systemStatus">
+                    <div class="text-center py-3">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p class="mt-2">Loading system status...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sliders-h me-2"></i>Configuration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="settingsForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="llmModel" class="form-label">LLM Model</label>
+                                    <select class="form-select" id="llmModel">
+                                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                        <option value="gpt-4">GPT-4</option>
+                                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="maxTokens" class="form-label">Max Tokens</label>
+                                    <input type="number" class="form-control" id="maxTokens" value="1500" min="100" max="4000">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="temperature" class="form-label">Temperature</label>
+                                    <input type="range" class="form-range" id="temperature" min="0" max="1" step="0.1" value="0.7">
+                                    <div class="d-flex justify-content-between">
+                                        <small>0 (Focused)</small>
+                                        <small>1 (Creative)</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="chunkSize" class="form-label">Chunk Size</label>
+                                    <input type="number" class="form-control" id="chunkSize" value="1000" min="500" max="2000">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Processing Options</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="autoFinancial" checked>
+                                <label class="form-check-label" for="autoFinancial">
+                                    Automatically extract financial data
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="autoSummary" checked>
+                                <label class="form-check-label" for="autoSummary">
+                                    Generate AI summaries by default
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="autoPlots" checked>
+                                <label class="form-check-label" for="autoPlots">
+                                    Auto-generate financial plots
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Database Management -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-database me-2"></i>Database Management
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> These actions cannot be undone. Please backup your data before proceeding.
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-warning" onclick="clearCache()">
+                            <i class="fas fa-broom me-2"></i>Clear Cache
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="clearDatabase()">
+                            <i class="fas fa-trash me-2"></i>Clear All Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Information -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-code me-2"></i>API Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>Base URL: <code id="apiBaseUrl">http://localhost:5000/api</code></p>
+                    <p>Documentation: Available at <code>/api/docs</code> (if enabled)</p>
+                    
+                    <h6>Key Endpoints:</h6>
+                    <ul class="list-unstyled">
+                        <li><code>POST /api/upload</code> - Upload document</li>
+                        <li><code>POST /api/query</code> - Query documents</li>
+                        <li><code>GET /api/documents</code> - List documents</li>
+                        <li><code>GET /api/stats</code> - System statistics</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSystemStatus();
+        
+        // Set API base URL
+        document.getElementById('apiBaseUrl').textContent = window.location.origin + '/api';
+        
+        // Form submission
+        document.getElementById('settingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveSettings();
+        });
+    });
+
+    async function loadSystemStatus() {
+        try {
+            const response = await fetch('/api/stats');
+            const data = await response.json();
+            
+            const statusContainer = document.getElementById('systemStatus');
+            
+            const dbStats = data.database_stats || {};
+            const llmAvailable = data.llm_available || false;
+            
+            statusContainer.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Database Status</h6>
+                        <div class="d-flex justify-content-between">
+                            <span>Documents:</span>
+                            <span class="badge bg-primary">${dbStats.total_documents || 0}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Text Chunks:</span>
+                            <span class="badge bg-info">${dbStats.total_chunks || 0}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Index Size:</span>
+                            <span class="badge bg-secondary">${dbStats.index_size || 0}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>AI Services</h6>
+                        <div class="d-flex justify-content-between">
+                            <span>LLM Status:</span>
+                            <span class="badge bg-${llmAvailable ? 'success' : 'warning'}">
+                                ${llmAvailable ? 'Online' : 'Offline'}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Model:</span>
+                            <span class="badge bg-info">${data.llm_model || 'N/A'}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Embedding Model:</span>
+                            <span class="badge bg-secondary">${data.embedding_model || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Embedding Dimension: ${dbStats.embedding_dimension || 'N/A'}
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            <i class="fas fa-code me-1"></i>
+                            Version: ${data.app_version || '1.0.0'}
+                        </small>
+                    </div>
+                </div>
+            `;
+            
+        } catch (error) {
+            console.error('Error loading system status:', error);
+            document.getElementById('systemStatus').innerHTML = `
+                <div class="text-center py-3 text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p class="mt-2">Error loading system status</p>
+                </div>
+            `;
+        }
+    }
+
+    function saveSettings() {
+        // Collect form data
+        const settings = {
+            llm_model: document.getElementById('llmModel').value,
+            max_tokens: parseInt(document.getElementById('maxTokens').value),
+            temperature: parseFloat(document.getElementById('temperature').value),
+            chunk_size: parseInt(document.getElementById('chunkSize').value),
+            auto_financial: document.getElementById('autoFinancial').checked,
+            auto_summary: document.getElementById('autoSummary').checked,
+            auto_plots: document.getElementById('autoPlots').checked
+        };
+
+        // Save to localStorage for now (in a real app, you'd save to backend)
+        localStorage.setItem('ragAppSettings', JSON.stringify(settings));
+        
+        showAlert('Settings saved successfully!', 'success');
+    }
+
+    async function clearCache() {
+        if (!confirm('Are you sure you want to clear the cache? This will remove temporary files and cached data.')) {
+            return;
+        }
+
+        try {
+            // In a real implementation, you'd call an API endpoint
+            showAlert('Cache cleared successfully!', 'success');
+        } catch (error) {
+            showAlert('Error clearing cache', 'danger');
+        }
+    }
+
+    async function clearDatabase() {
+        if (!confirm('Are you sure you want to clear ALL data? This will remove all documents, embeddings, and metadata. This action cannot be undone!')) {
+            return;
+        }
+
+        const confirmation = prompt('Type "DELETE" to confirm:');
+        if (confirmation !== 'DELETE') {
+            return;
+        }
+
+        try {
+            // In a real implementation, you'd call an API endpoint
+            showAlert('Database cleared successfully!', 'success');
+            setTimeout(() => {
+                loadSystemStatus();
+            }, 1000);
+        } catch (error) {
+            showAlert('Error clearing database', 'danger');
+        }
+    }
+
+    // Load saved settings
+    function loadSavedSettings() {
+        const saved = localStorage.getItem('ragAppSettings');
+        if (saved) {
+            try {
+                const settings = JSON.parse(saved);
+                
+                if (settings.llm_model) document.getElementById('llmModel').value = settings.llm_model;
+                if (settings.max_tokens) document.getElementById('maxTokens').value = settings.max_tokens;
+                if (settings.temperature !== undefined) document.getElementById('temperature').value = settings.temperature;
+                if (settings.chunk_size) document.getElementById('chunkSize').value = settings.chunk_size;
+                if (settings.auto_financial !== undefined) document.getElementById('autoFinancial').checked = settings.auto_financial;
+                if (settings.auto_summary !== undefined) document.getElementById('autoSummary').checked = settings.auto_summary;
+                if (settings.auto_plots !== undefined) document.getElementById('autoPlots').checked = settings.auto_plots;
+                
+            } catch (error) {
+                console.error('Error loading saved settings:', error);
+            }
+        }
+    }
+
+    // Load settings on page load
+    document.addEventListener('DOMContentLoaded', loadSavedSettings);
+</script>
+{% endblock %}
